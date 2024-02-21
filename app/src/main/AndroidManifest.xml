@@ -20,7 +20,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <!-- 声明与已配对蓝牙设备通信权限 -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <!-- 声明本应用绝不会通过蓝牙获取用户地理位置 -->
 
     <application
         android:allowBackup="true"

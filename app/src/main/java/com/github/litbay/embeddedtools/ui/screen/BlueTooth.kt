@@ -1,16 +1,26 @@
 package com.github.litbay.embeddedtools.ui.screen
 
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothManager
+import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
-import androidx.compose.foundation.layout.Arrangement
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BluetoothConnected
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.SwitchLeft
+import androidx.compose.material.icons.filled.SwitchRight
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,61 +29,124 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.github.litbay.embeddedtools.ui.component.FullErrorPage
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.github.litbay.embeddedtools.server.bluetooth.Bluetooth
+import com.github.litbay.embeddedtools.ui.theme.Background
 
-//定义蓝牙初始化信息结构体
-object BlueToothInitInfo {
-    lateinit var bluetoothManager: BluetoothManager
-    var bluetoothAdapter: BluetoothAdapter? = null
-    //val isEnable = mutableStateOf(this.bluetoothAdapter?.isEnabled)
-}
-
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@RequiresApi(Build.VERSION_CODES.S)
 @Composable
-fun BluetoothScreen(context: Context){
-
-    //蓝牙初始化
-    if (!initBlueTooth(context)) {
-        FullErrorPage(text = "您的设备不支持蓝牙")
+fun BluetoothScreenNav(context: Context, activity: Activity, backToHome: () -> Unit) {
+    /*
+    * 蓝牙初始化*/
+    val bluetooth = Bluetooth(context, activity)
+    if (!bluetooth.initSuccess) {
+        backToHome()
         return
     }
 
-    var bluetoothEnable by remember { mutableStateOf(BlueToothInitInfo.bluetoothAdapter?.isEnabled) }
+    val navController = rememberNavController()
+    var topAppBarTitle by remember { mutableStateOf("") }
+    var dropdownMenuExpended by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        //verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (bluetoothEnable !=true) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(text = "蓝牙当前已关闭，请打开蓝牙后刷新")
-                Spacer(modifier = Modifier.size(10.dp))
-                Button(onClick = { bluetoothEnable = BlueToothInitInfo.bluetoothAdapter?.isEnabled }) {
-                    Text(text = "刷新")
-                }
-            }
-            return
+    Column {
+        Column {
+            BluetoothTopAppBar(topAppBarTitle, dropdownMenuExpended, navController) { dropdownMenuExpended = it }
         }
-
-        Text(text = "蓝牙调试器Demo", fontSize = 30.sp, modifier = Modifier.padding(20.dp))
-        /*     val pairedDevices: Set<BluetoothDevice>? = bluetoothAdapter?.bondedDevices
-             Text(text = "已配对设备列表：")
-             if (pairedDevices != null) {
-                 for (device in pairedDevices) {
-                     Text(text = "${device.name}（${device.address}）")
-                 }
-             }*/
+        NavHost(
+            navController = navController,
+            startDestination = "blueTooth.legacy",
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            composable("blueTooth.legacy") {
+                topAppBarTitle = "经典蓝牙"
+                LegacyBluetoothScreen(bluetooth = bluetooth)
+            }
+            composable("blueTooth.ble") {
+                topAppBarTitle = "BLE蓝牙"
+                BLEScreen(bluetooth = bluetooth)
+            }
+        }
     }
 }
 
 
-fun initBlueTooth(context: Context): Boolean {
-    BlueToothInitInfo.bluetoothManager = context.getSystemService(BluetoothManager::class.java)
-    BlueToothInitInfo.bluetoothAdapter = BlueToothInitInfo.bluetoothManager.adapter
-    return BlueToothInitInfo.bluetoothAdapter != null
+@RequiresApi(Build.VERSION_CODES.S)
+@Composable
+fun LegacyBluetoothScreen(bluetooth: Bluetooth) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        val pairedDevices = bluetooth.getPairedDevices()
+        Text(text = "已配对设备列表：")
+        pairedDevices?.forEach { device ->
+            Text(text = "${device.name}（${device.address}）")
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.S)
+@Composable
+fun BLEScreen(bluetooth: Bluetooth) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = "BLE功能页面")
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BluetoothTopAppBar(
+    topAppBarTitle: String,
+    dropdownMenuExpended: Boolean,
+    navController: NavHostController,
+    actionsCallBack: (Boolean) -> Unit) {
+    TopAppBar(
+        title = { Text(text = topAppBarTitle) },
+        navigationIcon = {
+            Icon(imageVector = Icons.Filled.BluetoothConnected,
+                contentDescription = null,
+                modifier = Modifier.padding(10.dp)) },
+        actions = {
+            IconButton(onClick = { actionsCallBack(true) }) {
+                Icon(imageVector = Icons.Filled.ExpandMore, contentDescription = null) }
+            BluetoothModeSwitchMenu(dropdownMenuExpended, navController) { actionsCallBack(false) }},
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
+    )
+}
+
+@Composable
+private fun BluetoothModeSwitchMenu(
+    dropdownMenuExpended: Boolean,
+    navController: NavHostController,
+    hideMenuCallBack: () -> Unit
+) {
+    DropdownMenu(
+        expanded = dropdownMenuExpended,
+        onDismissRequest = { hideMenuCallBack() }
+    ) {
+        DropdownMenuItem(
+            leadingIcon = { Icon(imageVector = Icons.Filled.SwitchRight, contentDescription = null) },
+            text = { Text(text = "经典蓝牙") },
+            onClick = {
+                navController.navigate("blueTooth.legacy") {
+                    popUpTo("blueTooth.legacy") { inclusive = true }
+                    popUpTo("blueTooth.ble") { inclusive = true }
+                }
+                hideMenuCallBack()
+            }
+        )
+        DropdownMenuItem(
+            leadingIcon = { Icon(imageVector = Icons.Filled.SwitchLeft, contentDescription = null) },
+            text = { Text(text = "BLE蓝牙") },
+            onClick = {
+                navController.navigate("blueTooth.ble") {
+                    popUpTo("blueTooth.ble") { inclusive = true }
+                    popUpTo("blueTooth.legacy") { inclusive = true }
+                }
+                hideMenuCallBack()
+            }
+        )
+    }
 }
