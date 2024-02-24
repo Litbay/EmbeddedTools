@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -59,12 +60,12 @@ fun HomeScreen(navController: NavHostController) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             IconButton(
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(50.dp),
                 onClick = { navController.navigate("blueTooth") }
             ) {
-                Icon(imageVector = Icons.Filled.Bluetooth, modifier = Modifier.size(64.dp), contentDescription = null)
+                Icon(imageVector = Icons.Filled.Bluetooth, modifier = Modifier.size(50.dp), contentDescription = null)
             }
-            Text(text = "蓝牙")
+            Text(text = "蓝牙", fontSize = 12.sp)
         }
     }
 }
